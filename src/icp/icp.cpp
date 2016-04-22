@@ -231,7 +231,6 @@ box multiprune_icp::solve(box b, contractor & ctc, SMTConfig & config, BranchHeu
 
 box multiheuristic_icp::solve(box bx, contractor & ctc, SMTConfig & config,
         vector<std::reference_wrapper<BranchHeuristic>> heuristics) {
-    // don't use yet, since contractor is not yet threadsafe
     static vector<box> solns;
     solns.clear();
     std::mutex mu;
@@ -244,7 +243,7 @@ box multiheuristic_icp::solve(box bx, contractor & ctc, SMTConfig & config,
     prune(hull, ctc, config, all_used_constraints);
     vector<std::thread> threads;
 
-    auto dothread = [&](BranchHeuristic & heuristic) {
+    auto dothread = [&](BranchHeuristic & heuristic, box b, int i) {
 #define PRUNEBOX(x) prune((x), ctc, config, used_constraints)
         thread_local static std::unordered_set<std::shared_ptr<constraint>> used_constraints;
         thread_local static vector<box> box_stack;
@@ -266,15 +265,12 @@ box multiheuristic_icp::solve(box bx, contractor & ctc, SMTConfig & config,
             return b;
         };
 
-        mu.lock();
-        box b = hull;
-        mu.unlock();
         pushbox(b);
 
         do {
             b = popbox();
             mu.lock();
-            b.intersect(hull);
+            //b.intersect(hull);
             // TODO(clhuang): is contractor threadsafe???
             PRUNEBOX(b);
             mu.unlock();
@@ -311,23 +307,23 @@ box multiheuristic_icp::solve(box bx, contractor & ctc, SMTConfig & config,
                     }
                     if (config.nra_found_soln >= config.nra_multiple_soln) {
                         solved = true;
-                        mu.unlock();
-                        break;
                     }
                     mu.unlock();
                 }
             }
             // hull_stack, hopefully shrunk
-            if (!hull_stack.empty()) {
-                mu.lock();
-                hull.intersect(hull_stack.back());
-                mu.unlock();
-            }
+            //if (!hull_stack.empty()) {
+                //mu.lock();
+                //hull.intersect(hull_stack.back());
+                //mu.unlock();
+            //}
         } while (box_stack.size() > 0 && !solved);
 
         mu.lock();
-        if (config.nra_found_soln == 0) {
+        if (!solved && config.nra_found_soln == 0) {
+            cerr << "NO SOLUTION FOUND " << i << endl;
             solved = true;  // needed if unsat
+            b.set_empty();
             solns.push_back(b);  // would be empty
         }
         // update all_used_constraints
@@ -339,8 +335,9 @@ box multiheuristic_icp::solve(box bx, contractor & ctc, SMTConfig & config,
 #undef PRUNEBOX
     };
 
-    for (auto& heuristic : heuristics) {
-        threads.push_back(std::thread(dothread, heuristic));
+    for (int i = 0; i < heuristics.size(); i++) {
+        auto& heuristic = heuristics[i];
+        threads.push_back(std::thread(dothread, heuristic, hull, i));
     }
 
     for (auto& t : threads) {
