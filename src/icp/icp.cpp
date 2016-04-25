@@ -71,11 +71,11 @@ void prune(box & b, contractor & ctc, SMTConfig & config, std::unordered_set<std
 // Prune a given box b using ctc, but keep the old state of ctc
 void test_prune(box & b, contractor & ctc, SMTConfig & config) {
     try {
-        auto const old_output = ctc.output();
-        auto const old_used_constraints = ctc.used_constraints();
+        //auto const old_output = ctc.output();
+        //auto const old_used_constraints = ctc.used_constraints();
         ctc.prune(b, config);
-        ctc.set_output(old_output);
-        ctc.set_used_constraints(old_used_constraints);
+        //ctc.set_output(old_output);
+        //ctc.set_used_constraints(old_used_constraints);
     } catch (contractor_exception & e) {
         // Do nothing
     }
@@ -241,11 +241,13 @@ box multiheuristic_icp::solve(box bx, contractor & ctc, SMTConfig & config,
     std::atomic_bool solved;
     std::unordered_set<std::shared_ptr<constraint>> all_used_constraints;
     prune(hull, ctc, config, all_used_constraints);
+    ibex::BitSet pout = ctc.output();
     vector<std::thread> threads;
 
     auto dothread = [&](BranchHeuristic & heuristic, box b, int i) {
-#define PRUNEBOX(x) prune((x), ctc, config, used_constraints)
-        thread_local static std::unordered_set<std::shared_ptr<constraint>> used_constraints;
+#define PRUNEBOX(x) test_prune((x), ctc, config)
+        thread_local static std::unordered_set<std::shared_ptr<constraint>> used_constraints(all_used_constraints);
+        thread_local static ibex::BitSet prevout(pout);
         thread_local static vector<box> box_stack;
         thread_local static vector<box> hull_stack;  // nth box in hull_stack contains hull of first n boxes in box_stack
         box_stack.clear();
@@ -270,9 +272,21 @@ box multiheuristic_icp::solve(box bx, contractor & ctc, SMTConfig & config,
         do {
             b = popbox();
             mu.lock();
+            auto xi = b.get_value(0);
+            auto yi = b.get_value(1);
+            cerr << "BEFORE";
+            cerr << i << "X: [" << xi.lb() << ", " << xi.ub() << "] " << "Y: [" << yi.lb() << ", " << yi.ub() << "] " << endl;
             //b.intersect(hull);
             // TODO(clhuang): is contractor threadsafe???
+            ctc.set_output(prevout);
+            ctc.set_used_constraints(used_constraints);
             PRUNEBOX(b);
+            prevout = ctc.output();
+            used_constraints = ctc.used_constraints();
+            xi = b.get_value(0);
+            yi = b.get_value(1);
+            cerr << "AFTER";
+            cerr << i << "X: [" << xi.lb() << ", " << xi.ub() << "] " << "Y: [" << yi.lb() << ", " << yi.ub() << "] " << endl;
             mu.unlock();
             if (!b.is_empty()) {
                 vector<int> sorted_dims = heuristic.sort_branches(b, config.nra_precision);
@@ -335,7 +349,7 @@ box multiheuristic_icp::solve(box bx, contractor & ctc, SMTConfig & config,
 #undef PRUNEBOX
     };
 
-    for (int i = 0; i < heuristics.size(); i++) {
+    for (unsigned i = 0; i < heuristics.size(); i++) {
         auto& heuristic = heuristics[i];
         threads.push_back(std::thread(dothread, heuristic, hull, i));
     }
