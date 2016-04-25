@@ -81,6 +81,7 @@ public:
     inline ibex::BitSet input()  const { return m_input; }
     inline ibex::BitSet output() const { return m_output; }
     inline void clear_output() { m_output.clear(); }
+    inline int get_kind() { return (int) m_kind; }
     inline void clear_used_constraints() { m_used_constraints.clear(); }
     inline std::unordered_set<std::shared_ptr<constraint>> used_constraints() const { return m_used_constraints; }
 
@@ -126,6 +127,7 @@ public:
     inline ibex::BitSet input() const { return m_ptr->input(); }
     inline ibex::BitSet output() const { return m_ptr->output(); }
     inline std::unordered_set<std::shared_ptr<constraint>> used_constraints() const { return m_ptr->used_constraints(); }
+    inline int get_kind() { return m_ptr->get_kind(); }
     inline void set_output(ibex::BitSet const & output) {
         return m_ptr->set_output(output);
     }
@@ -135,6 +137,7 @@ public:
 
     inline void prune(box & b, SMTConfig & config) {
         if (m_ptr) {
+            //std::cerr << m_ptr->get_kind() << std::endl;
             // by default, clear output vector and used constraints.
             m_ptr->clear_output();
             m_ptr->clear_used_constraints();

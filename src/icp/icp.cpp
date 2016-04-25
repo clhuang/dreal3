@@ -73,6 +73,7 @@ void test_prune(box & b, contractor & ctc, SMTConfig & config) {
     try {
         auto const old_output = ctc.output();
         auto const old_used_constraints = ctc.used_constraints();
+        //cerr << "HI" << endl;
         ctc.prune(b, config);
         ctc.set_output(old_output);
         ctc.set_used_constraints(old_used_constraints);
@@ -244,7 +245,7 @@ box multiheuristic_icp::solve(box bx, contractor & ctc, SMTConfig & config,
     vector<std::thread> threads;
 
     auto dothread = [&](BranchHeuristic & heuristic, box b, int i) {
-#define PRUNEBOX(x) prune((x), ctc, config, used_constraints)
+#define PRUNEBOX(x) test_prune((x), ctc, config)
         thread_local static std::unordered_set<std::shared_ptr<constraint>> used_constraints;
         thread_local static vector<box> box_stack;
         thread_local static vector<box> hull_stack;  // nth box in hull_stack contains hull of first n boxes in box_stack
@@ -335,7 +336,7 @@ box multiheuristic_icp::solve(box bx, contractor & ctc, SMTConfig & config,
 #undef PRUNEBOX
     };
 
-    for (int i = 0; i < heuristics.size(); i++) {
+    for (unsigned i = 0; i < heuristics.size(); i++) {
         auto& heuristic = heuristics[i];
         threads.push_back(std::thread(dothread, heuristic, hull, i));
     }

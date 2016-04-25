@@ -120,6 +120,7 @@ void contractor_seq::prune_naive(box & b, SMTConfig & config) {
     DREAL_LOG_DEBUG << "contractor_seq::prune";
     for (contractor & c : m_vec) {
         interruption_point();
+        //cerr << "WHAT" << endl;
         c.prune(b, config);
         m_output.union_with(c.output());
         unordered_set<shared_ptr<constraint>> const & used_ctrs = c.used_constraints();
