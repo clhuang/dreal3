@@ -44,7 +44,12 @@ stacker::stacker(vector<box> & boxes, scoped_vec<shared_ptr<constraint>> const &
     m_best_score = numeric_limits<double>::max();
 }
 
-bool stacker::playout() {
+mcss_stacker::mcss_stacker(vector<box> & boxes, scoped_vec<shared_ptr<constraint>> const & ctrs,
+                 double const prec)
+    : stacker::stacker(boxes, ctrs, prec) {
+}
+
+bool mcss_stacker::playout() {
     // clear the score vector
     // run samples on each box, of numbers based on current scores
     // update the scores on each box and put them in the score set
@@ -65,7 +70,7 @@ bool stacker::playout() {
             }
             // DREAL_LOG_INFO<<"finished evaluation on box "<<m_stack[i];
             if (total_err <= m_prec) {  // solution found
-                update_solution(sample);
+                m_sol = sample;
                 DREAL_LOG_INFO << "best score right now " << total_err << "\t";
                 return true;
             } else if (score > total_err) {
@@ -82,7 +87,7 @@ bool stacker::playout() {
     return false;
 }
 
-void stacker::update_budgets() {
+void mcss_stacker::update_budgets() {
     // assuming score board has been sorted
     m_sample_budgets.clear();
     assert(m_stack.size() == m_score_board.size());  // pop operations shouldn't mess with this
@@ -94,7 +99,7 @@ void stacker::update_budgets() {
     }
 }
 
-box stacker::pop_best() {
+box mcss_stacker::pop_best() {
     sort(m_score_board.begin(), m_score_board.end());
     update_budgets();
     unsigned index_of_best = 0;
@@ -115,6 +120,6 @@ box stacker::pop_best() {
     return result;
 }
 
-void stacker::push(box const & b) { m_stack.push_back(b); }
+void mcss_stacker::push(box const & b) { m_stack.push_back(b); }
 
 }  // namespace dreal;

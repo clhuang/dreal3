@@ -35,25 +35,68 @@ class scoped_vec;
 
 class stacker {
 public:
-    stacker(std::vector<box> & boxes, scoped_vec<std::shared_ptr<constraint>> const & ctrs,
+    stacker(std::vector<box> & boxes, scoped_vec<std::shared_ptr<constraint>> const & ctrs, double const prec);
+    virtual box pop_best() = 0;  // pop the best box
+    virtual void push(box const &) = 0;
+    virtual bool playout() = 0;  // return true if sat solution is found
+    inline unsigned get_size() { return m_stack.size(); }
+    inline box & get_solution() { return m_sol; }
+    inline double get_best_score() { return m_best_score; }
+protected:
+    std::vector<box> & m_stack;
+    scoped_vec<std::shared_ptr<constraint>> const & m_ctrs;
+    double m_prec;
+    double m_best_score;
+    box m_sol;
+};
+
+class mcss_stacker : public stacker {
+public:
+    mcss_stacker(std::vector<box> & boxes, scoped_vec<std::shared_ptr<constraint>> const & ctrs,
             double const prec);
     box pop_best();  // pop the best box
     void push(box const &);
     bool playout();  // return true if sat solution is found
-    inline unsigned get_size() { return m_stack.size(); }
-    inline void update_solution(box & b) { m_sol = b; }
-    inline box & get_solution() { return m_sol; }
-    inline double get_best_score() { return m_best_score; }
 
 private:
-    std::vector<box> & m_stack;
-    scoped_vec<std::shared_ptr<constraint>> const & m_ctrs;
     std::vector<double> m_score_board;
-    double m_prec;
-    double m_best_score;
-    box m_sol;
     std::unordered_map<unsigned, unsigned> m_sample_budgets;  // decides how many samples on box
     void update_budgets();
+};
+
+
+class spmcts_stacker : public stacker {
+public:
+    class spmcts_node;
+    typedef std::unique_ptr<spmcts_node> spNode;
+    class spmcts_node {
+    public:
+        spmcts_node(double c, double d, box const & b);
+        spmcts_node(spmcts_node *parent, box const & b);
+        spNode left;
+        spNode right;
+        spmcts_node *parent;
+        unsigned visitcount;
+        double get_score();
+        void update(double x);
+        box b;
+
+    private:
+        double const c;
+        double const d;
+        double mean;
+        double m2;
+    };
+
+    spmcts_stacker(std::vector<box> & boxes, scoped_vec<std::shared_ptr<constraint>> const & ctrs, double const prec, double const c, double const d);
+    box pop_best();  // pop the best box
+    void push(box const &);
+    bool playout();  // return true if sat solution is found
+
+private:
+    double sample_err(box const & b);
+    spNode root;
+    spmcts_node *last;
 };
 
 }  // namespace dreal

@@ -60,7 +60,7 @@ void mcss_icp::solve(contractor & ctc, contractor_status & cs,
     box_stack.clear();
     box_stack.push_back(cs.m_box);
     double const prec = cs.m_config.nra_delta_test ? 0.0 : cs.m_config.nra_precision;
-    stacker stack(box_stack, ctrs, prec);
+    spmcts_stacker stack(box_stack, ctrs, prec, 10.0, -1.0);
     double tmp_score = 0.0;
     DREAL_LOG_INFO << "----new mcss instance----";
     do {
