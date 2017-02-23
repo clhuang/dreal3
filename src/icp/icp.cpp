@@ -108,23 +108,19 @@ void naive_icp::solve(contractor & ctc, contractor_status & cs,
                 assert(first.get_idx_last_branched() == i);
                 assert(second.get_idx_last_branched() == i);
                 if (second.is_bisectable(prec)) {
-                    double first_err = std::numeric_limits<double>::max();
-                    double second_err = std::numeric_limits<double>::max();
+                    double first_err = 0;
+                    double second_err = 0;
                     for (int j = 0; j < 5; j++) {
-                        double err1 = 0;
                         box sample = first.sample_point();
                         for (auto ctr : ctrs) {
                             assert(ctr->get_type() == constraint_type::Nonlinear);
-                            err1 += ctr->eval_error(sample);
+                            first_err += ctr->eval_error(sample);
                         }
-                        first_err = std::fmin(first_err, err1);
-                        double err2 = 0;
                         sample = second.sample_point();
                         for (auto ctr : ctrs) {
                             assert(ctr->get_type() == constraint_type::Nonlinear);
-                            err2 += ctr->eval_error(sample);
+                            second_err += ctr->eval_error(sample);
                         }
-                        second_err = std::fmin(second_err, err2);
                     }
                     if (first_err < second_err) {
                         box_stack.push_back(first);
