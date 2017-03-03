@@ -464,7 +464,7 @@ box box::set_dimension_ub(int dim) const {
 }
 
 box box::sample_point() const {
-    static mt19937_64 rg(system_clock::now().time_since_epoch().count());
+    static mt19937_64 rg(9999);
     unsigned const n = size();
     box b(*this);
     ibex::IntervalVector const & values = get_values();

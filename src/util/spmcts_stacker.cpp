@@ -90,7 +90,6 @@ bool spmcts_stacker::playout() {
         }
     }
     last = curr;
-    curr->b.sample_point();
     double err = sample_err(curr->b);
     double score = 1.0/err;
     DREAL_LOG_INFO << score;
@@ -98,6 +97,7 @@ bool spmcts_stacker::playout() {
         node->update(score);
     }
     m_best_score = last->get_score();
+    if (err <= m_prec) m_sol = curr->b;
     return err < m_prec;
 }
 
@@ -106,16 +106,23 @@ box spmcts_stacker::pop_best() {
 }
 
 double spmcts_stacker::sample_err(box const & b) {
-    double total_err = 0;
-    box sample = b.sample_point();
-    
-    for (auto ctr : m_ctrs) {
-        assert(ctr->get_type() == constraint_type::Nonlinear);
-        double err = ctr->eval_error(sample);
-        DREAL_LOG_INFO << "playout current err: " << err << " obtained on ctr " << *ctr;
-        total_err += err;
+    double best_err = numeric_limits<double>::max();
+    for (unsigned j = 0; j < 5; j++) {
+        double total_err = 0;
+        box sample = b.sample_point();
+        
+        for (auto ctr : m_ctrs) {
+            assert(ctr->get_type() == constraint_type::Nonlinear);
+            double err = ctr->eval_error(sample);
+            DREAL_LOG_INFO << b;
+            DREAL_LOG_INFO << "playout current err: " << err << " obtained on ctr " << *ctr;
+            if (err >= m_prec) {
+                total_err += err;
+            }
+        }
+        best_err = std::fmin(best_err, total_err);
     }
-    return total_err;
+    return best_err;
 }
 
 /**
