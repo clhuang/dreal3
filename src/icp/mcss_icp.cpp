@@ -79,10 +79,10 @@ void mcss_icp::solve(contractor & ctc, contractor_status & cs,
             }
             cs.m_box = stack.get_solution();
             DREAL_LOG_INFO << "mcss found solution\n" << cs.m_box;
+            solns.push_back(cs.m_box);
             if (cs.m_config.nra_found_soln >= cs.m_config.nra_multiple_soln) {
                 break;
             }
-            solns.push_back(cs.m_box);
         }
         prune(ctc, cs);
         if (!cs.m_box.is_empty()) {
@@ -104,11 +104,9 @@ void mcss_icp::solve(contractor & ctc, contractor_status & cs,
                 assert(first.get_idx_last_branched() == i);
                 assert(second.get_idx_last_branched() == i);
                 if (!first.is_empty()) {
-                    first.test_score(tmp_score);
                     stack.push(first);
                 }
                 if (!second.is_empty()) {
-                    second.test_score(tmp_score);
                     stack.push(second);
                 }
                 if (cs.m_config.nra_proof) {
@@ -121,18 +119,19 @@ void mcss_icp::solve(contractor & ctc, contractor_status & cs,
                     // If --multiple_soln is used
                     output_solution(cs.m_box, cs.m_config, cs.m_config.nra_found_soln);
                 }
+                solns.push_back(cs.m_box);
                 if (cs.m_config.nra_found_soln >= cs.m_config.nra_multiple_soln) {
                     break;
                 }
-                solns.push_back(cs.m_box);
             }
         }
     } while (stack.get_size() > 0);
-    if (cs.m_config.nra_multiple_soln > 1 && solns.size() > 0) {
+    if (solns.size() > 0) {  //found a solution
         cs.m_box = solns.back();
         return;
-    } else {
-        assert(!cs.m_box.is_empty() || box_stack.size() == 0);
+    } else {  //no solution
+        cs.m_box.set_empty();
+        assert(box_stack.size() == 0);
         return;
     }
 }
