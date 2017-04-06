@@ -432,7 +432,7 @@ vector<bool> box::diff_dims(box const & b) const {
 }
 
 box box::sample_dimension(int dim) const {
-    static mt19937_64 rg(system_clock::now().time_since_epoch().count());
+    static mt19937_64 rg(9999);
     box b(*this);
     ibex::IntervalVector const & values = get_values();
     ibex::Interval const & iv = values[dim];
